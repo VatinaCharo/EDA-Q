@@ -88,16 +88,13 @@ class CouplingLineStraight(LibraryBase):
         # FIXME:use gdspy.PolyPath like interface
         path_sub = gdsocc.Path(self.width, self.start_pos)
         path_sub.segment(500, "+x")
-        path_sub.done()
+        # path_sub.done()
 
         path = gdsocc.Path(self.width + self.gap*2, self.start_pos)
         path.segment(500, "+x")
-        path.done()
+        # path.done()
 
-        for idx in range(len(path.shapes)):
-            for c in path_sub.shapes:
-                s = path.shapes[idx]
-                cut_op = BRepAlgoAPI.BRepAlgoAPI_Cut(s, c)
-                path.shapes[idx] = cut_op.Shape()
+        cut_op = BRepAlgoAPI.BRepAlgoAPI_Cut(path.shape, path_sub.shape)
+        path.shape = cut_op.Shape()
         
         return path

@@ -190,16 +190,16 @@ class GdsEditor(QWidget):
             for s in i.shapes:
                 self._display.DisplayShape(
                     s, color=Quantity.Quantity_NameOfColor.Quantity_NOC_CORAL, transparency=0.8)
-        viewer._display.FitAll()
+        self._display.FitAll()
 
     def showComponents(self, components: list):
         for i in components:
-            for shape in i.draw_shape().shapes:
-                ais_shapes = self._display.DisplayShape(
-                    shape, color=Quantity.Quantity_NameOfColor.Quantity_NOC_CORAL, transparency=0.8)
-                for a in ais_shapes:
-                    self.component_shape_map.add_edge(i, a)
-        viewer._display.FitAll()
+            shape = i.draw_shape().shape
+            ais_shapes = self._display.DisplayShape(
+                shape, color=Quantity.Quantity_NameOfColor.Quantity_NOC_CORAL, transparency=0.8)
+            for a in ais_shapes:
+                self.component_shape_map.add_edge(i, a)
+        self._display.FitAll()
 
     def updateComponent(self, comp):
         if comp in self.component_shape_map:
@@ -215,7 +215,7 @@ class GdsEditor(QWidget):
                     self.component_shape_map.add_edge(comp, a)
                     # apply transformation to new shape
                     a.SetLocalTransformation(trans)
-            viewer._display.FitAll()
+            self._display.FitAll()
 
     def drawSelectBox(self, event):
         tolerance = 2
@@ -235,6 +235,7 @@ if __name__ == "__main__":
     import os
     from PyQt5.QtWidgets import QVBoxLayout, QMainWindow
     from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakeBox
+    from OCC.Core import BRepOffsetAPI, GeomAbs
     current_path = os.path.dirname(os.path.abspath(__file__))
     PROJ_PATH = os.path.abspath(os.path.join(
         os.path.dirname(current_path), "../.."))
