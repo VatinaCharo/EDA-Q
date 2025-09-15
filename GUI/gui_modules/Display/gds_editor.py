@@ -2,19 +2,27 @@ from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QFileDialog
 from PyQt5.QtCore import Qt, QSize, pyqtSignal, QPoint, QStandardPaths
 
 from OCC.Display.OCCViewer import Viewer3d
-from OCC.Core import gp, BRepBuilderAPI, Quantity, AIS
+from OCC.Core import gp, BRepBuilderAPI, Quantity, BRepOffsetAPI
 from OCC.Core import STEPControl
 
-import networkx as nx
-
+import pandas as pd
 from enum import IntEnum
+from manufac_sim_widget import ManufacSimWidget
 
 
 class GdsEditor(QWidget):
 
+    class ComponentData:
+        def __init__(self):
+            self.component = None
+            self.gdscell = None
+            self.topo_shape = None
+            self.ais_shape = None
+
     class Action(IntEnum):
         SHOW_IN_INTERPRETER = 0
         SAVE_FILE = 1
+        SHOW_MANUFACTURING_SIM = 2
 
     sendObjToInterpreter = pyqtSignal(dict)
 
@@ -31,6 +39,8 @@ class GdsEditor(QWidget):
                 lambda check, self=self: self.action_triggered.emit(GdsEditor.Action.SHOW_IN_INTERPRETER.value, self.cur_pos))
             self.addAction("Save current layout to file").triggered.connect(
                 lambda check, self=self: self.action_triggered.emit(GdsEditor.Action.SAVE_FILE.value, self.cur_pos))
+            self.addAction("Open manufacturing simulation").triggered.connect(
+                lambda check, self=self: self.action_triggered.emit(GdsEditor.Action.SHOW_MANUFACTURING_SIM.value, self.cur_pos))
 
         def popup(self, p, action=None):
             self.cur_pos = p
@@ -54,7 +64,8 @@ class GdsEditor(QWidget):
         self.right_menu.action_triggered.connect(self.handleMenuAction)
 
         # use digraph to store component and shape relation
-        self.component_shape_map = nx.DiGraph()
+        self.component_map = pd.DataFrame(
+            columns=['component', 'cell', 'topo_shape', 'ais_shape'])
 
         # occ 3dviewer
         self._display = Viewer3d()
@@ -70,10 +81,20 @@ class GdsEditor(QWidget):
         self._pan_start_y = None
         self._drawbox = False
 
+        self.dragStartPosX = None
+        self.dragStartPosY = None
+
         self._move_start_x = None
         self._move_start_y = None
 
         self._selected_shape = None
+
+        # manufacting setting
+        self._sim_widget = ManufacSimWidget(self)
+        self._sim_widget.setVisible(False)
+        self._in_sim_mode = False
+
+        self._sim_widget.applySimData.connect(self.manufacSim)
 
     def sizeHint(self):
         return QSize(800, 600)
@@ -89,9 +110,8 @@ class GdsEditor(QWidget):
             selected_shape = self._display.Context.SelectedInteractive()
             if selected_shape is not None:
                 self._display.Context.ClearSelected(True)
-                ais_shape = AIS.AIS_Shape.DownCast(selected_shape)
-                component = list(
-                    self.component_shape_map.predecessors(ais_shape))[0]
+                component = self.component_map[self.component_map['ais_shape']
+                                               == selected_shape].iat[0, 0]
                 self.sendObjToInterpreter.emit({"selec_component": component})
         elif action == GdsEditor.Action.SAVE_FILE:
             save_fn, _ = QFileDialog.getSaveFileName(
@@ -100,13 +120,33 @@ class GdsEditor(QWidget):
                 self.saveCurrentLayout(save_fn)
             else:
                 return
+        elif action == GdsEditor.Action.SHOW_MANUFACTURING_SIM:
+            datas = []
+            marked_layer_type = set()
+            for i in range(len(self.component_map)):
+                cell = self.component_map.iat[i, 1]
+                if (cell.layer, cell.datatype) not in marked_layer_type:
+                    marked_layer_type.add((cell.layer, cell.datatype))
+                    color = Quantity.Quantity_Color(cell.layer+cell.datatype)
+                    r, g, b = int(color.Red()*255), int(color.Green()
+                                                        * 255), int(color.Blue()*255)
+                    rgb = f"#{r:02x}{g:02x}{b:02x}".upper()
+                    datas.append({'Color': rgb, 'Layer': cell.layer,
+                                  'Datatype': cell.datatype})
+            self._sim_widget.setData(datas)
+            self._sim_widget.show()
+            pass
 
     def saveCurrentLayout(self, fn):
         writer = STEPControl.STEPControl_Writer()
-        for node in self.component_shape_map:
-            if type(node) == AIS.AIS_Shape:
-                writer.Transfer(
-                    node.Shape(), STEPControl.STEPControl_StepModelType.STEPControl_AsIs)
+        for i in range(len(self.component_map)):
+            ais_shape = self.component_map.iat[i, 3]
+            topo_shape = ais_shape.Shape()
+            trans = ais_shape.Transformation()
+            transformer = BRepBuilderAPI.BRepBuilderAPI_Transform(trans)
+            transformer.Perform(topo_shape)
+            writer.Transfer(
+                transformer.Shape(), STEPControl.STEPControl_StepModelType.STEPControl_AsIs)
 
         writer.Write(fn)
 
@@ -121,9 +161,11 @@ class GdsEditor(QWidget):
         super(GdsEditor, self).keyPressEvent(event)
 
     def focusInEvent(self, event):
+        self._display.View.MustBeResized()
         self._display.Repaint()
 
     def focusOutEvent(self, event):
+        self._display.View.MustBeResized()
         self._display.Repaint()
 
     def paintEvent(self, event):
@@ -139,14 +181,22 @@ class GdsEditor(QWidget):
         button = event.button()
         # use left mouse button to pan
         if button == Qt.MouseButton.LeftButton:
-            self._pan_start_x = pos.x()
-            self._pan_start_y = pos.y()
+            if self._in_sim_mode:
+                self.dragStartPosX = pos.x()
+                self.dragStartPosY = pos.y()
+                self._display.StartRotation(
+                    self.dragStartPosX, self.dragStartPosY)
+            else:
+                self._pan_start_x = pos.x()
+                self._pan_start_y = pos.y()
+        # use middle mouse button to move component
         elif button == Qt.MouseButton.MiddleButton:
             self._move_start_x = pos.x()
             self._move_start_y = pos.y()
             self._display.Context.ClearSelected(True)
             self._display.Select(pos.x(), pos.y())
             self._selected_shape = self._display.Context.SelectedInteractive()
+        # right mouse button pop menu
         elif button == Qt.MouseButton.RightButton:
             gpos = self.mapToGlobal(pos)
             self.right_menu.popup(gpos)
@@ -156,11 +206,14 @@ class GdsEditor(QWidget):
         buttons = event.buttons()
         # use left mouse button to pan
         if buttons == Qt.MouseButton.LeftButton:
-            dx = pos.x() - self._pan_start_x
-            dy = pos.y() - self._pan_start_y
-            self._pan_start_x = pos.x()
-            self._pan_start_y = pos.y()
-            self._display.Pan(dx, -dy)
+            if self._in_sim_mode:
+                self._display.Rotation(pos.x(), pos.y())
+            else:
+                dx = pos.x() - self._pan_start_x
+                dy = pos.y() - self._pan_start_y
+                self._pan_start_x = pos.x()
+                self._pan_start_y = pos.y()
+                self._display.Pan(dx, -dy)
         if buttons == Qt.MouseButton.MiddleButton and self._selected_shape:
             # translate view coord to real coord
             view = self._display.View
@@ -194,28 +247,34 @@ class GdsEditor(QWidget):
 
     def showComponents(self, components: list):
         for i in components:
-            shape = i.draw_shape().shape
+            cell = i.draw_shape()
+            topo_shape = cell.shape
             ais_shapes = self._display.DisplayShape(
-                shape, color=Quantity.Quantity_NameOfColor.Quantity_NOC_CORAL, transparency=0.8)
+                topo_shape, color=Quantity.Quantity_NameOfColor(cell.layer+cell.datatype), transparency=0.8)
             for a in ais_shapes:
-                self.component_shape_map.add_edge(i, a)
+                temp = pd.DataFrame(
+                    [{'component': i, 'cell': cell, 'topo_shape': topo_shape, 'ais_shape': a}])
+                self.component_map = pd.concat(
+                    [self.component_map, temp], ignore_index=True)
         self._display.FitAll()
 
     def updateComponent(self, comp):
-        if comp in self.component_shape_map:
-            for shape in self.component_shape_map.successors(comp):
-                # save trans
-                trans = shape.Transformation()
-                self._display.Context.Erase(shape, False)
-
-            for shape in comp.draw_shape().shapes:
-                ais_shapes = self._display.DisplayShape(
-                    shape, color=Quantity.Quantity_NameOfColor.Quantity_NOC_CORAL, transparency=0.8)
-                for a in ais_shapes:
-                    self.component_shape_map.add_edge(comp, a)
-                    # apply transformation to new shape
-                    a.SetLocalTransformation(trans)
-            self._display.FitAll()
+        result = self.component_map[self.component_map['component'] == comp]
+        ais_shape = result.iat[0, 3]
+        # save trans
+        trans = ais_shape.Transformation()
+        self._display.Context.Erase(ais_shape, False)
+        new_cell = comp.draw_shape()
+        new_topo_shape = new_cell.shape
+        new_ais_shape = self._display.DisplayShape(
+            new_topo_shape, color=Quantity.Quantity_NameOfColor(new_cell.layer+new_cell.datatype), transparency=0.8)
+        # apply transformation to new shape
+        for a in new_ais_shape:
+            a.SetLocalTransformation(trans)
+            result.iat[0, 1] = new_cell
+            result.iat[0, 2] = new_topo_shape
+            result.iat[0, 3] = a
+        self._display.FitAll()
 
     def drawSelectBox(self, event):
         tolerance = 2
@@ -228,6 +287,41 @@ class GdsEditor(QWidget):
 
     def saveImage(self, path: str = None):
         self._display.ExportToImage(path)
+
+    def manufacSim(self, process: list):
+        current_upper = 0
+        current_lower = 0
+        for p in process:
+            layer = int(p["Layer"])
+            datatype = int(p['Datatype'])
+            proc = p['Process']
+            depth = float(p['Depth'])
+            for i in range(len(self.component_map)):
+                cell = self.component_map.iat[i, 1]
+                if cell.layer == layer and cell.datatype == datatype:
+                    topo_shape = self.component_map.iat[i, 2]
+                    ais_shape = self.component_map.iat[i, 3]
+                    trans = ais_shape.Transformation()
+                    if proc == "CVD":
+                        norm_line = BRepBuilderAPI.BRepBuilderAPI_MakeEdge(
+                            gp.gp_Pnt(0, 0, current_upper), gp.gp_Pnt(0, 0, current_upper+depth)).Edge()
+                        current_upper += depth
+                    else:
+                        norm_line = BRepBuilderAPI.BRepBuilderAPI_MakeEdge(
+                            gp.gp_Pnt(0, 0, current_lower), gp.gp_Pnt(0, 0, current_lower-depth)).Edge()
+                        current_lower -= depth
+                    spine = BRepBuilderAPI.BRepBuilderAPI_MakeWire(norm_line).Wire()
+                    new_topo_shape = BRepOffsetAPI.BRepOffsetAPI_MakePipe(
+                        spine, topo_shape).Shape()
+                    self._display.Context.Erase(ais_shape, False)
+                    new_ais_shape = self._display.DisplayShape(
+                        new_topo_shape, color=Quantity.Quantity_NameOfColor(cell.layer+cell.datatype), transparency=0.8)
+
+                    for a in new_ais_shape:
+                        a.SetLocalTransformation(trans)
+                        self.component_map.iat[i, 3] = a
+
+                    self._in_sim_mode = True
 
 
 if __name__ == "__main__":
