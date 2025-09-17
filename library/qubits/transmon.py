@@ -317,7 +317,7 @@ class Transmon(LibraryBase):
 
                 cpw = gdsocc.Path(cpw_width[i], cpw_start)
                 cpw.segment(cpw_extend[i], direction=direction_radians)
-                cpw.done()
+                # cpw.done()
                 subtract_shape.append(cpw)
 
 
@@ -336,12 +336,9 @@ class Transmon(LibraryBase):
             self.pocket_pos = [[main_body_x - width/2 - max_extend_value, main_body_y + height + gap/2 + max_extend_value + max_pad_gap + max_pad_height],
                                [main_body_x + width/2 + max_extend_value, main_body_y - height - gap/2 - max_extend_value - max_pad_height - max_pad_gap]]
 
-        for idx in range(len(subtract_square.shapes)):
-            for comp in subtract_shape:
-                for c in comp.shapes:
-                    s = subtract_square.shapes[idx]
-                    cut_op = BRepAlgoAPI.BRepAlgoAPI_Cut(s, c)
-                    subtract_square.shapes[idx] = cut_op.Shape()
+        for comp in subtract_shape:
+            cut_op = BRepAlgoAPI.BRepAlgoAPI_Cut(subtract_square.shape, comp.shape)
+            subtract_square.shape = cut_op.Shape()
 
 
         return subtract_square
