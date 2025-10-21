@@ -11,3 +11,4 @@ from library import qubits
 from library import readout_lines
 from library import transmission_lines
 from library import cover_bridges
+from library import jj_jodan

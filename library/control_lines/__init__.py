@@ -11,6 +11,8 @@ from library.control_lines.control_line_circle2408 import ControlLineCircle2408
 from library.control_lines.control_line_circle2412 import ControlLineCircle2412
 from library.control_lines.control_line_width_diff import ControlLineWidthDiff
 from library.control_lines.control_line_width_diff1 import ControlLineWidthDiff1
+from library.control_lines.ResonatorCoilRect_1 import Resonatorcoilrect1
+from library.control_lines.ResonatorLumped_1 import Resonatorlumped1
 
 module_name_list = ["charge_line", 
                     "charge_line1", 
@@ -19,4 +21,6 @@ module_name_list = ["charge_line",
                     "control_line_circle2408", 
                     "control_line_circle2412", 
                     "control_line_width_diff", 
-                    "control_line_width_diff1"]
+                    "control_line_width_diff1",
+                    "ResonatorCoilRect_1",
+                    "ResonatorLumped_1"]

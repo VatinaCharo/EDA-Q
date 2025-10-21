@@ -12,6 +12,8 @@ from library.readout_lines.readout_cavity_plus import ReadoutCavityPlus
 from library.readout_lines.readout_cavity import ReadoutCavity
 from library.readout_lines.readout_line_finger_plus import ReadoutLineFingerPlus
 from library.readout_lines.readout_line_finger import ReadoutLineFinger
+from library.readout_lines.ReadoutResFC_1 import Readoutresfc1
+
 
 module_name_list = ["readout_arrow_plus",
                     "readout_arrow",
@@ -20,5 +22,4 @@ module_name_list = ["readout_arrow_plus",
                     "readout_cavity",
                     "readout_line_finger_plus",
                     "readout_line_finger",
-                    "readout_cavity_flipchip_no_pad"
-                    ]
+                    "ReadoutResFC_1"]

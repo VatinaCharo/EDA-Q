@@ -8,12 +8,6 @@ from base.library_base import LibraryBase
 import toolbox
 import copy, gdspy
 import numpy as np
-import os, sys
-POJECT_ROOT =os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../")
-if POJECT_ROOT not in sys.path:
-    sys.path.append(POJECT_ROOT)
-import gdsocc 
-from OCC.Core import BRepAlgoAPI 
 
 class CouplingLineStraight(LibraryBase):
     """
@@ -83,18 +77,3 @@ class CouplingLineStraight(LibraryBase):
         self.cell = self.lib.new_cell(self.name + "_cell")
         self.cell.add(sub_poly)
         return
-    
-    def draw_shape(self):
-        # FIXME:use gdspy.PolyPath like interface
-        path_sub = gdsocc.Path(self.width, self.start_pos)
-        path_sub.segment(500, "+x")
-        # path_sub.done()
-
-        path = gdsocc.Path(self.width + self.gap*2, self.start_pos)
-        path.segment(500, "+x")
-        # path.done()
-
-        cut_op = BRepAlgoAPI.BRepAlgoAPI_Cut(path.shape, path_sub.shape)
-        path.shape = cut_op.Shape()
-        
-        return path

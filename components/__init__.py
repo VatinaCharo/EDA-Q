@@ -10,6 +10,7 @@ from components.qubits import Qubits
 from components.readout_lines import ReadoutLines
 from components.transmission_lines import TransmissionLines
 from components.cover_bridges import CoverBridges
+from components.jj_jodan import JjJodan
 
 module_name_list = ["air_bridges",
                     "chips",
@@ -22,4 +23,6 @@ module_name_list = ["air_bridges",
                     "qubits",
                     "readout_lines",
                     "transmission_lines",
-                    "cover_bridges"]
+                    "cover_bridges",
+                    "jj_jodan"
+]
