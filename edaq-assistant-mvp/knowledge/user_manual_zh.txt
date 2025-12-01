@@ -1,0 +1,514 @@
+# EDA-Q API 快速参考 (精简版)
+
+## 1. Design 类 - 主设计对象
+
+### 初始化
+```python
+from api.design import Design
+
+# 方式1: 默认初始化
+design = Design()
+
+# 方式2: 指定拓扑行列
+design = Design(topo_row=4, topo_col=4)
+```
+
+### 核心方法
+
+#### generate_topology() - 生成拓扑结构
+**作用**: 定义量子比特的网格布局
+
+**参数**:
+- `qubits_num` (int): 量子比特总数
+- `topo_row` (int, 可选): 拓扑行数
+- `topo_col` (int, 可选): 拓扑列数
+- `qasm_path` (str, 可选): QASM文件路径,基于算法生成拓扑
+
+**示例**:
+```python
+# 自动生成64比特网格
+design.generate_topology(qubits_num=64)
+
+# 指定4x4网格
+design.generate_topology(topo_row=8, topo_col=8)
+
+# 基于量子算法生成
+design.generate_topology(qasm_path="circuit.qasm")
+```
+
+#### generate_qubits() - 生成量子比特
+**作用**: 在版图上放置量子比特元件
+
+**参数**:
+- `topology` (bool): 是否基于拓扑结构生成
+- `qubits_type` (str): 量子比特类型
+  - `"Transmon"`: 标准Transmon量子比特
+  - `"Xmon"`: Google Xmon设计
+  - `"Smon1201"`: Smon设计
+  - `"Transmoncross1"`: Cross型Transmon
+  - `"Transmonpocket1"`: Pocket型Transmon
+- `dist` (float): 量子比特间距,单位微米(μm),典型值2000-3000
+- `chip_name` (str, 可选): 目标芯片层名称,默认"chip0"
+
+**示例**:
+```python
+# 基于拓扑生成
+design.generate_qubits(
+    topology=True,
+    qubits_type="Transmon",
+    dist=2000,
+    chip_name="chip0"
+)
+```
+
+#### generate_coupling_lines() - 生成耦合器
+**作用**: 在量子比特之间添加耦合元件
+
+**参数**:
+- `topology` (bool): 是否基于拓扑连接关系
+- `qubits` (bool): 是否基于已生成的量子比特
+- `cpls_type` (str): 耦合器类型
+  - `"CouplerBase"`: 基础电容耦合
+  - `"CouplingCavity"`: 谐振腔耦合
+  - `"CouplingLineStraight"`: 直线耦合
+
+**示例**:
+```python
+design.generate_coupling_lines(
+    topology=True,
+    qubits=True,
+    cpls_type="CouplerBase"
+)
+```
+
+#### generate_readout_lines() - 生成读取谐振腔
+**作用**: 为每个量子比特添加读取谐振腔
+
+**参数**:
+- `qubits` (bool): 是否基于已生成的量子比特
+- `rdls_type` (str): 谐振腔类型
+  - `"ReadoutCavity"`: 标准λ/4读取腔
+  - `"ReadoutCavityFlipchip"`: 倒装焊工艺读取腔
+  - `"ReadoutArrow"`: 箭头型读取腔
+- `chip_name` (str, 可选): 目标芯片层
+
+**示例**:
+```python
+design.generate_readout_lines(
+    qubits=True,
+    rdls_type="ReadoutCavity",
+    chip_name="chip0"
+)
+```
+
+#### generate_chip() - 生成芯片层
+**作用**: 定义芯片边界
+
+**参数**:
+- `qubits` (bool): 是否基于量子比特位置自动确定芯片大小
+- `dist` (float): 芯片边界到量子比特的距离(μm)
+- `chip_name` (str): 芯片层名称
+
+**示例**:
+```python
+design.generate_chip(qubits=True, dist=4000, chip_name="chip0")
+```
+
+#### copy_chip() - 复制芯片层
+**作用**: 创建芯片层副本,用于多层设计
+
+**示例**:
+```python
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+```
+
+#### routing() - 自动化布线
+**作用**: 自动生成控制线、传输线等连接
+
+**参数**:
+- `method` (str): 布线方法
+  - `"Flipchip_routing"`: 标准倒装焊布线
+  - `"Flipchip_routing_IBM"`: 读控复用布线
+- `chip_name` (str): 目标芯片层
+- `ctls_type` (str, 可选): 控制线类型
+
+**示例**:
+```python
+design.routing(
+    method="Flipchip_routing",
+    chip_name="chip1",
+    ctls_type="ControlLineCircle2412"
+)
+```
+
+---
+
+## 2. Topology 类 - 拓扑管理
+
+### 边操作方法
+
+#### add_edge() - 添加单条边
+**作用**: 在两个量子比特之间添加连接
+
+```python
+design.topology.add_edge(q0_name="q0", q1_name="q1")
+```
+
+#### add_edges() - 批量添加边
+```python
+edges = [["q0", "q1"], ["q1", "q2"], ["q2", "q3"]]
+design.topology.add_edges(edges=edges)
+```
+
+#### remove_edge() - 删除边
+```python
+design.topology.remove_edge(edge=["q0", "q1"])
+```
+
+#### batch_add_edges() - 按行/列批量添加边
+```python
+# 为第2行添加横向边
+design.topology.batch_add_edges(y=2)
+
+# 为第3列添加纵向边
+design.topology.batch_add_edges(x=3)
+```
+
+#### batch_add_edges_list() - 批量多行列添加
+```python
+# 为第0,1,2行和第1,2列添加边
+design.topology.batch_add_edges_list(y=[0, 1, 2], x=[1, 2])
+```
+
+#### generate_full_edges() - 生成全连接网格
+**作用**: 在所有相邻量子比特之间添加边
+
+```python
+design.topology.generate_full_edges()
+```
+
+#### generate_random_edges() - 随机生成边
+```python
+design.topology.generate_random_edges(edges_num=20)
+```
+
+### 显示方法
+
+#### show_image() - 显示拓扑图
+```python
+design.topology.show_image()
+```
+
+#### show_options() - 显示拓扑参数
+```python
+design.topology.show_options()
+```
+
+---
+
+## 3. GDS 类 - 版图操作
+
+### 显示和保存
+
+#### show_svg() - SVG预览
+**作用**: 在浏览器中预览版图
+
+```python
+design.gds.show_svg()
+```
+
+#### show_gds() - GDS查看器预览
+```python
+design.gds.show_gds()
+```
+
+#### save_gds() - 保存GDS文件
+```python
+design.gds.save_gds("output.gds")
+```
+
+---
+
+## 4. 完整流程示例
+
+### 示例1: 64比特超导芯片
+
+```python
+from api.design import Design
+
+# 1. 创建设计
+design = Design()
+
+# 2. 生成4x4拓扑
+design.generate_topology(qubits_num=64)
+design.topology.generate_full_edges()
+
+# 3. 生成量子比特
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+
+# 4. 生成芯片层
+design.generate_chip(qubits=True, chip_name="chip0")
+
+# 5. 复制芯片层用于布线
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+
+# 6. 生成耦合线
+design.generate_coupling_lines(topology=True, qubits=True, cpls_type="CouplerBase")
+
+# 7. 自动布线
+design.routing(method="Flipchip_routing", chip_name="chip1")
+
+# 8. 显示和保存
+design.gds.show_gds()
+design.gds.save_gds("./chip_16qubits.gds")
+```
+
+### 示例2: 自定义拓扑芯片
+
+```python
+from api.design import Design
+
+# 创建5x5网格
+design = Design(topo_row=5, topo_col=5)
+
+# 自定义添加边
+design.topology.batch_add_edges_list(y=[0, 2, 4])
+design.topology.add_edge("q0", "q12")
+design.topology.add_edge("q12", "q24")
+
+# 显示拓扑
+design.topology.show_image()
+
+# 生成量子比特
+design.generate_qubits(topology=True, qubits_type="Xmon", dist=2500)
+
+# 后续流程同示例1
+```
+
+### 示例3: 带读取腔的完整设计
+
+```python
+from api.design import Design
+
+design = Design()
+
+# 1. 拓扑和量子比特
+design.generate_topology(qubits_num=9)
+design.topology.generate_full_edges()
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+
+# 2. 芯片层
+design.generate_chip(qubits=True, dist=4000, chip_name="chip0")
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+
+# 3. 耦合器
+design.generate_coupling_lines(topology=True, qubits=True, cpls_type="CouplingCavity")
+
+# 4. 读取谐振腔
+design.generate_readout_lines(qubits=True, rdls_type="ReadoutCavity", chip_name="chip0")
+
+# 5. 自动布线
+design.routing(method="Flipchip_routing_IBM", chip_name="chip1")
+
+# 6. 保存
+design.gds.save_gds("chip_with_readout.gds")
+```
+
+---
+
+## 5. 常见问题和解决方案
+
+### 问题1: 量子比特类型无效
+
+**错误**:
+```python
+design.generate_qubits(qubits_type="InvalidType")
+# KeyError or ValueError
+```
+
+**解决方案**:
+```python
+# 使用支持的类型之一
+design.generate_qubits(qubits_type="Transmon")
+```
+
+支持的类型: `Transmon`, `Xmon`, `Smon1201`, `Transmoncross1`, `Transmonpocket1`
+
+### 问题2: 未生成拓扑就生成量子比特
+
+**错误**:
+```python
+design = Design()
+design.generate_qubits(topology=True)  # 报错: 拓扑未生成
+```
+
+**解决方案**:
+```python
+design = Design()
+design.generate_topology(qubits_num=16)  # 先生成拓扑
+design.generate_qubits(topology=True)    # 再生成量子比特
+```
+
+### 问题3: 布线前未复制芯片层
+
+**错误**:
+```python
+design.routing(method="Flipchip_routing", chip_name="chip1")
+# 报错: chip1不存在
+```
+
+**解决方案**:
+```python
+design.generate_chip(qubits=True, chip_name="chip0")
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")  # 先复制
+design.routing(method="Flipchip_routing", chip_name="chip1")
+```
+
+### 问题4: 导入模块失败
+
+**错误**:
+```python
+from api.design import Design  # ModuleNotFoundError
+```
+
+**解决方案**:
+```python
+import sys
+sys.path.append("path/to/EDA-Q")  # 添加EDA-Q路径
+from api.design import Design
+```
+
+---
+
+## 6. 设计最佳实践
+
+### 1. 标准设计流程
+
+✅ **推荐顺序**:
+```
+拓扑设计 → 量子比特 → 芯片层 → 复制层 → 耦合器 → 读取腔 → 布线 → 保存
+```
+
+❌ **避免跳步骤**: 例如不生成拓扑就生成量子比特
+
+### 2. 参数选择建议
+
+- **量子比特间距**: 2000-3000 μm (典型值2000)
+- **芯片边界距离**: 4000-8000 μm
+- **拓扑结构**: 小规模测试用 3x3 或 4x4,实际设计用 10x10 以上
+
+### 3. 调试技巧
+
+```python
+# 每个关键步骤后检查
+design.generate_topology(qubits_num=16)
+design.topology.show_image()  # 检查拓扑是否正确
+
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+design.gds.show_svg()  # 检查量子比特位置
+
+# 保存中间结果
+design.gds.save_gds("checkpoint_01.gds")
+```
+
+### 4. 常用组合
+
+**小规模测试** (3x3, 9比特):
+```python
+design.generate_topology(qubits_num=9)
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+```
+
+**中等规模** (4x4, 16比特):
+```python
+design.generate_topology(qubits_num=16)
+design.generate_qubits(topology=True, qubits_type="Xmon", dist=2500)
+```
+
+**大规模设计** (10x10, 100比特):
+```python
+design.generate_topology(topo_row=10, topo_col=10)
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=3000)
+```
+
+---
+
+## 7. 快速命令参考
+
+### 创建和初始化
+```python
+from api.design import Design
+design = Design()
+```
+
+### 拓扑操作
+```python
+design.generate_topology(qubits_num=16)
+design.topology.generate_full_edges()
+design.topology.add_edge("q0", "q1")
+design.topology.show_image()
+```
+
+### 量子比特和组件
+```python
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+design.generate_coupling_lines(topology=True, qubits=True, cpls_type="CouplerBase")
+design.generate_readout_lines(qubits=True, rdls_type="ReadoutCavity")
+```
+
+### 芯片和布线
+```python
+design.generate_chip(qubits=True, chip_name="chip0")
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+design.routing(method="Flipchip_routing", chip_name="chip1")
+```
+
+### 显示和保存
+```python
+design.gds.show_svg()
+design.gds.show_gds()
+design.gds.save_gds("output.gds")
+```
+
+---
+
+## 8. 单位和约定
+
+- **长度单位**: 微米 (μm)
+- **频率单位**: GHz
+- **量子比特命名**: q0, q1, q2, ... (从0开始)
+- **芯片层命名**: chip0, chip1, chip2, ...
+- **默认工作目录**: 脚本所在目录
+
+---
+
+## 9. 进阶技巧
+
+### 技巧1: 部分区域操作
+```python
+# 只为特定行添加边
+for row in [0, 2, 4]:
+    design.topology.batch_add_edges(y=row)
+```
+
+### 技巧2: 混合量子比特类型
+```python
+# 虽然不推荐,但可以手动添加不同类型
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+# 然后手动添加其他类型的量子比特...
+```
+
+### 技巧3: 保存多个版本
+```python
+design.gds.save_gds("version_01_topology.gds")
+# ... 继续设计 ...
+design.gds.save_gds("version_02_with_qubits.gds")
+# ... 继续设计 ...
+design.gds.save_gds("version_03_final.gds")
+```
+
+---
+
+**文档版本**: v1.0 MVP
+**适用于**: EDA-Q AI Assistant
+**最后更新**: 2025-01-27

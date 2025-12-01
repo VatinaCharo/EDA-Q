@@ -1,0 +1,514 @@
+# EDA-Q API Quick Reference (Simplified Version)
+
+## 1. Design Class - Main Design Object
+
+### Initialization
+```python
+from api.design import Design
+
+# Method 1: Default initialization
+design = Design()
+
+# Method 2: Specify topology rows and columns
+design = Design(topo_row=4, topo_col=4)
+```
+
+### Core Methods
+
+#### generate_topology() - Generate Topology
+**Purpose**: Define the grid layout of qubits
+
+**Parameters**:
+- `qubits_num` (int): Total number of qubits
+- `topo_row` (int, optional): Number of topology rows
+- `topo_col` (int, optional): Number of topology columns
+- `qasm_path` (str, optional): QASM file path for algorithm-based topology generation
+
+**Examples**:
+```python
+# Auto-generate 64-qubit grid
+design.generate_topology(qubits_num=64)
+
+# Specify 8x8 grid
+design.generate_topology(topo_row=8, topo_col=8)
+
+# Generate based on quantum algorithm
+design.generate_topology(qasm_path="circuit.qasm")
+```
+
+#### generate_qubits() - Generate Qubits
+**Purpose**: Place qubit components on the layout
+
+**Parameters**:
+- `topology` (bool): Whether to generate based on topology structure
+- `qubits_type` (str): Qubit type
+  - `"Transmon"`: Standard Transmon qubit
+  - `"Xmon"`: Google Xmon design
+  - `"Smon1201"`: Smon design
+  - `"Transmoncross1"`: Cross-type Transmon
+  - `"Transmonpocket1"`: Pocket-type Transmon
+- `dist` (float): Distance between qubits in micrometers (μm), typical value 2000-3000
+- `chip_name` (str, optional): Target chip layer name, default "chip0"
+
+**Example**:
+```python
+# Generate based on topology
+design.generate_qubits(
+    topology=True,
+    qubits_type="Transmon",
+    dist=2000,
+    chip_name="chip0"
+)
+```
+
+#### generate_coupling_lines() - Generate Couplers
+**Purpose**: Add coupling elements between qubits
+
+**Parameters**:
+- `topology` (bool): Whether to use topology connections
+- `qubits` (bool): Whether to use generated qubits
+- `cpls_type` (str): Coupler type
+  - `"CouplerBase"`: Basic capacitive coupling
+  - `"CouplingCavity"`: Resonator cavity coupling
+  - `"CouplingLineStraight"`: Straight-line coupling
+
+**Example**:
+```python
+design.generate_coupling_lines(
+    topology=True,
+    qubits=True,
+    cpls_type="CouplerBase"
+)
+```
+
+#### generate_readout_lines() - Generate Readout Cavities
+**Purpose**: Add readout resonators for each qubit
+
+**Parameters**:
+- `qubits` (bool): Whether to use generated qubits
+- `rdls_type` (str): Resonator type
+  - `"ReadoutCavity"`: Standard λ/4 readout cavity
+  - `"ReadoutCavityFlipchip"`: Flip-chip readout cavity
+  - `"ReadoutArrow"`: Arrow-type readout cavity
+- `chip_name` (str, optional): Target chip layer
+
+**Example**:
+```python
+design.generate_readout_lines(
+    qubits=True,
+    rdls_type="ReadoutCavity",
+    chip_name="chip0"
+)
+```
+
+#### generate_chip() - Generate Chip Layer
+**Purpose**: Define chip boundaries
+
+**Parameters**:
+- `qubits` (bool): Auto-determine chip size based on qubit positions
+- `dist` (float): Distance from chip boundary to qubits (μm)
+- `chip_name` (str): Chip layer name
+
+**Example**:
+```python
+design.generate_chip(qubits=True, dist=4000, chip_name="chip0")
+```
+
+#### copy_chip() - Copy Chip Layer
+**Purpose**: Create chip layer copy for multi-layer design
+
+**Example**:
+```python
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+```
+
+#### routing() - Automated Routing
+**Purpose**: Automatically generate control lines, transmission lines, etc.
+
+**Parameters**:
+- `method` (str): Routing method
+  - `"Flipchip_routing"`: Standard flip-chip routing
+  - `"Flipchip_routing_IBM"`: Read-control multiplexed routing
+- `chip_name` (str): Target chip layer
+- `ctls_type` (str, optional): Control line type
+
+**Example**:
+```python
+design.routing(
+    method="Flipchip_routing",
+    chip_name="chip1",
+    ctls_type="ControlLineCircle2412"
+)
+```
+
+---
+
+## 2. Topology Class - Topology Management
+
+### Edge Operation Methods
+
+#### add_edge() - Add Single Edge
+**Purpose**: Add connection between two qubits
+
+```python
+design.topology.add_edge(q0_name="q0", q1_name="q1")
+```
+
+#### add_edges() - Batch Add Edges
+```python
+edges = [["q0", "q1"], ["q1", "q2"], ["q2", "q3"]]
+design.topology.add_edges(edges=edges)
+```
+
+#### remove_edge() - Remove Edge
+```python
+design.topology.remove_edge(edge=["q0", "q1"])
+```
+
+#### batch_add_edges() - Batch Add by Row/Column
+```python
+# Add horizontal edges to row 2
+design.topology.batch_add_edges(y=2)
+
+# Add vertical edges to column 3
+design.topology.batch_add_edges(x=3)
+```
+
+#### batch_add_edges_list() - Batch Add Multiple Rows/Columns
+```python
+# Add edges to rows 0,1,2 and columns 1,2
+design.topology.batch_add_edges_list(y=[0, 1, 2], x=[1, 2])
+```
+
+#### generate_full_edges() - Generate Fully Connected Grid
+**Purpose**: Add edges between all adjacent qubits
+
+```python
+design.topology.generate_full_edges()
+```
+
+#### generate_random_edges() - Random Edge Generation
+```python
+design.topology.generate_random_edges(edges_num=20)
+```
+
+### Display Methods
+
+#### show_image() - Display Topology Diagram
+```python
+design.topology.show_image()
+```
+
+#### show_options() - Display Topology Parameters
+```python
+design.topology.show_options()
+```
+
+---
+
+## 3. GDS Class - Layout Operations
+
+### Display and Save
+
+#### show_svg() - SVG Preview
+**Purpose**: Preview layout in browser
+
+```python
+design.gds.show_svg()
+```
+
+#### show_gds() - GDS Viewer Preview
+```python
+design.gds.show_gds()
+```
+
+#### save_gds() - Save GDS File
+```python
+design.gds.save_gds("output.gds")
+```
+
+---
+
+## 4. Complete Workflow Examples
+
+### Example 1: 64-Qubit Superconducting Chip
+
+```python
+from api.design import Design
+
+# 1. Create design
+design = Design()
+
+# 2. Generate 8x8 topology
+design.generate_topology(qubits_num=64)
+design.topology.generate_full_edges()
+
+# 3. Generate qubits
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+
+# 4. Generate chip layer
+design.generate_chip(qubits=True, chip_name="chip0")
+
+# 5. Copy chip layer for routing
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+
+# 6. Generate coupling lines
+design.generate_coupling_lines(topology=True, qubits=True, cpls_type="CouplerBase")
+
+# 7. Auto-routing
+design.routing(method="Flipchip_routing", chip_name="chip1")
+
+# 8. Display and save
+design.gds.show_gds()
+design.gds.save_gds("./chip_64qubits.gds")
+```
+
+### Example 2: Custom Topology Chip
+
+```python
+from api.design import Design
+
+# Create 5x5 grid
+design = Design(topo_row=5, topo_col=5)
+
+# Custom edge addition
+design.topology.batch_add_edges_list(y=[0, 2, 4])
+design.topology.add_edge("q0", "q12")
+design.topology.add_edge("q12", "q24")
+
+# Display topology
+design.topology.show_image()
+
+# Generate qubits
+design.generate_qubits(topology=True, qubits_type="Xmon", dist=2500)
+
+# Subsequent steps same as Example 1
+```
+
+### Example 3: Complete Design with Readout Cavities
+
+```python
+from api.design import Design
+
+design = Design()
+
+# 1. Topology and qubits
+design.generate_topology(qubits_num=9)
+design.topology.generate_full_edges()
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+
+# 2. Chip layers
+design.generate_chip(qubits=True, dist=4000, chip_name="chip0")
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+
+# 3. Couplers
+design.generate_coupling_lines(topology=True, qubits=True, cpls_type="CouplingCavity")
+
+# 4. Readout resonators
+design.generate_readout_lines(qubits=True, rdls_type="ReadoutCavity", chip_name="chip0")
+
+# 5. Auto-routing
+design.routing(method="Flipchip_routing_IBM", chip_name="chip1")
+
+# 6. Save
+design.gds.save_gds("chip_with_readout.gds")
+```
+
+---
+
+## 5. Common Issues and Solutions
+
+### Issue 1: Invalid Qubit Type
+
+**Error**:
+```python
+design.generate_qubits(qubits_type="InvalidType")
+# KeyError or ValueError
+```
+
+**Solution**:
+```python
+# Use one of the supported types
+design.generate_qubits(qubits_type="Transmon")
+```
+
+Supported types: `Transmon`, `Xmon`, `Smon1201`, `Transmoncross1`, `Transmonpocket1`
+
+### Issue 2: Generate Qubits Without Topology
+
+**Error**:
+```python
+design = Design()
+design.generate_qubits(topology=True)  # Error: Topology not generated
+```
+
+**Solution**:
+```python
+design = Design()
+design.generate_topology(qubits_num=16)  # Generate topology first
+design.generate_qubits(topology=True)    # Then generate qubits
+```
+
+### Issue 3: Routing Without Copying Chip Layer
+
+**Error**:
+```python
+design.routing(method="Flipchip_routing", chip_name="chip1")
+# Error: chip1 doesn't exist
+```
+
+**Solution**:
+```python
+design.generate_chip(qubits=True, chip_name="chip0")
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")  # Copy first
+design.routing(method="Flipchip_routing", chip_name="chip1")
+```
+
+### Issue 4: Module Import Failed
+
+**Error**:
+```python
+from api.design import Design  # ModuleNotFoundError
+```
+
+**Solution**:
+```python
+import sys
+sys.path.append("path/to/EDA-Q")  # Add EDA-Q path
+from api.design import Design
+```
+
+---
+
+## 6. Design Best Practices
+
+### 1. Standard Design Flow
+
+✅ **Recommended Order**:
+```
+Topology Design → Qubits → Chip Layer → Copy Layer → Couplers → Readout Cavities → Routing → Save
+```
+
+❌ **Avoid Skipping Steps**: e.g., don't generate qubits without topology
+
+### 2. Parameter Selection Suggestions
+
+- **Qubit Spacing**: 2000-3000 μm (typical value 2000)
+- **Chip Boundary Distance**: 4000-8000 μm
+- **Topology Structure**: Use 3x3 or 4x4 for small-scale testing, 10x10+ for actual design
+
+### 3. Debugging Tips
+
+```python
+# Check after each critical step
+design.generate_topology(qubits_num=16)
+design.topology.show_image()  # Check topology correctness
+
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+design.gds.show_svg()  # Check qubit positions
+
+# Save intermediate results
+design.gds.save_gds("checkpoint_01.gds")
+```
+
+### 4. Common Combinations
+
+**Small-scale testing** (3x3, 9 qubits):
+```python
+design.generate_topology(qubits_num=9)
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+```
+
+**Medium-scale** (4x4, 16 qubits):
+```python
+design.generate_topology(qubits_num=16)
+design.generate_qubits(topology=True, qubits_type="Xmon", dist=2500)
+```
+
+**Large-scale design** (10x10, 100 qubits):
+```python
+design.generate_topology(topo_row=10, topo_col=10)
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=3000)
+```
+
+---
+
+## 7. Quick Command Reference
+
+### Create and Initialize
+```python
+from api.design import Design
+design = Design()
+```
+
+### Topology Operations
+```python
+design.generate_topology(qubits_num=16)
+design.topology.generate_full_edges()
+design.topology.add_edge("q0", "q1")
+design.topology.show_image()
+```
+
+### Qubits and Components
+```python
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+design.generate_coupling_lines(topology=True, qubits=True, cpls_type="CouplerBase")
+design.generate_readout_lines(qubits=True, rdls_type="ReadoutCavity")
+```
+
+### Chip and Routing
+```python
+design.generate_chip(qubits=True, chip_name="chip0")
+design.copy_chip(old_chip_name="chip0", new_chip_name="chip1")
+design.routing(method="Flipchip_routing", chip_name="chip1")
+```
+
+### Display and Save
+```python
+design.gds.show_svg()
+design.gds.show_gds()
+design.gds.save_gds("output.gds")
+```
+
+---
+
+## 8. Units and Conventions
+
+- **Length Unit**: Micrometers (μm)
+- **Frequency Unit**: GHz
+- **Qubit Naming**: q0, q1, q2, ... (starting from 0)
+- **Chip Layer Naming**: chip0, chip1, chip2, ...
+- **Default Working Directory**: Script directory
+
+---
+
+## 9. Advanced Tips
+
+### Tip 1: Partial Area Operations
+```python
+# Only add edges for specific rows
+for row in [0, 2, 4]:
+    design.topology.batch_add_edges(y=row)
+```
+
+### Tip 2: Mixed Qubit Types
+```python
+# Although not recommended, you can manually add different types
+design.generate_qubits(topology=True, qubits_type="Transmon", dist=2000)
+# Then manually add other types of qubits...
+```
+
+### Tip 3: Save Multiple Versions
+```python
+design.gds.save_gds("version_01_topology.gds")
+# ... continue design ...
+design.gds.save_gds("version_02_with_qubits.gds")
+# ... continue design ...
+design.gds.save_gds("version_03_final.gds")
+```
+
+---
+
+**Documentation Version**: v1.0 MVP
+**For**: EDA-Q AI Assistant
+**Last Updated**: 2025-01-27
