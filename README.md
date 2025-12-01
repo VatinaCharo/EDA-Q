@@ -1,4 +1,4 @@
-# EDA-Q v1.0.0
+# EDA-Q v2.0.0
 
 [![](https://img.shields.io/badge/homepage-EDA_Q-orange)](https://github.com/Q-transmon-xmon/EDA-Q)
 
@@ -9,6 +9,7 @@ EDA-Q is an advanced automated design tool for quantum chips (Simultaneous suppo
 - [Background](#Background)
 - [Installation](#Installation)
 - [Key Project Leaders](#Key-Project-Leaders)
+- [Ai Assistant](#Ai-Assistant)
 - [Contribution Guide](#Contribution-Guide)
     - [Contributors](#Contributors)
 
@@ -60,7 +61,8 @@ To simplify the installation process of the **EDA-Q** tool, we provide a pre-con
    ```bash
    python -c "import api"
    ```
-
+## Ai Assistant
+![alt text](5c826bac4e7c035f2426835532274910.png)
 ## Key Project Leaders
 
 [@Tiancaizhi](Tiancaizhi.github.io)
