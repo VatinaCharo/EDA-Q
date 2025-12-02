@@ -6,12 +6,16 @@ EDA-Q is an advanced automated design tool for quantum chips (Simultaneous suppo
 
 ## Directory
 
-- [Background](#Background)
-- [Installation](#Installation)
-- [Key Project Leaders](#Key-Project-Leaders)
-- [Ai Assistant](#Ai-Assistant)
-- [Contribution Guide](#Contribution-Guide)
-    - [Contributors](#Contributors)
+- [EDA-Q v2.0.0](#eda-q-v200)
+  - [Directory](#directory)
+  - [Background](#background)
+- [Installation](#installation)
+  - [installation method](#installation-method)
+  - [installation procedure:](#installation-procedure)
+  - [Ai Assistant](#ai-assistant)
+  - [Key Project Leaders](#key-project-leaders)
+  - [Contribution Guide](#contribution-guide)
+    - [Contributors](#contributors)
 
 ## Background
 
@@ -87,3 +91,4 @@ Thanks to all the contributors.
 [@CIQTEK Co.,Ltd]() <br>
 [@Shenzhen International Quantum Institute]() <br>
 [@Zhejiang University]() <br>
+[@National Supercomputing Center in Zhengzhou]() <br>

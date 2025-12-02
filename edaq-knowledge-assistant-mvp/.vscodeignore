@@ -1,0 +1,33 @@
+# 开发文件
+.vscode/**
+.vscode-test/**
+node_modules/**/.bin/**
+
+# 测试和文档
+*.md
+!README.md
+TESTING_CHECKLIST.md
+MULTILINGUAL_GUIDE.md
+PROJECT_DELIVERY.md
+DEMO_CHECKLIST.md
+QUICK_START.md
+
+# 示例代码
+demo_examples.py
+
+# Git 相关
+.gitignore
+.gitattributes
+
+# 编译和构建
+*.vsix
+.eslintrc.json
+
+# 日志和临时文件
+*.log
+.DS_Store
+Thumbs.db
+
+# 其他开发文件
+.editorconfig
+tsconfig.json

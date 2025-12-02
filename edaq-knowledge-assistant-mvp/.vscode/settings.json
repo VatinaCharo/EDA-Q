@@ -1,0 +1,7 @@
+{
+  "edaq.qwenApiKey": "sk-24126eb7395a453aaa0b08126d63aebb",
+  "edaq.qwenModel": "qwen-plus",
+  "python-envs.defaultEnvManager": "ms-python.python:conda",
+  "python-envs.defaultPackageManager": "ms-python.python:conda",
+  "python-envs.pythonProjects": []
+}
